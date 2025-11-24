@@ -2192,14 +2192,16 @@ function main()
                 estado.fovAtivo = false
             end
             
+            -- CORREÇÃO APLICADA AQUI: Substituição das constantes problemáticas por valores numéricos
             if estado.fovAtivo then
                 if isCurrentCharWeapon(PLAYER_PED, 34) and isCharPlayingAnim(PLAYER_PED, "gun_stand") then
-                    if isWidgetPressed(WIDGET_ZOOM_IN) then
+                    -- CORREÇÃO: Use valores numéricos diretos em vez de WIDGET_ZOOM_IN e WIDGET_ZOOM_OUT
+                    if isWidgetPressed(16) then -- WIDGET_ZOOM_IN geralmente é 16
                         estado.zoomLevel = estado.zoomLevel + 6
                         if estado.zoomLevel > 10 + config.valorFov then
                             estado.zoomLevel = 10 + config.valorFov
                         end
-                    elseif isWidgetPressed(WIDGET_ZOOM_OUT) then
+                    elseif isWidgetPressed(17) then -- WIDGET_ZOOM_OUT geralmente é 17
                         estado.zoomLevel = estado.zoomLevel - 4.5
                         if estado.zoomLevel < 0 then
                             estado.zoomLevel = 0

@@ -1,15 +1,64 @@
+local ffi = require "ffi"
+ffi.cdef("void _Z12AND_OpenLinkPKc(const char* link);")
+local gtasa = ffi.load("GTASA")
+function openLink(link)
+    gtasa._Z12AND_OpenLinkPKc(link)
+end
 local imgui = require "mimgui"
+local dependenciasOk = false
+local showTrava = imgui.new.bool(false)
+local texVida = nil
+local texColete = nil
+function verificarDependencias()
+    local webDir = getWorkingDirectory() .. "/web"
+    local coletePath = webDir .. "/shelldercolete.png"
+    local vidaPath = webDir .. "/shelldervida.png"
+    if doesFileExist(webDir) and doesFileExist(coletePath) and doesFileExist(vidaPath) then
+        local fileColete = io.open(coletePath, "rb")
+        local fileVida = io.open(vidaPath, "rb")
+        if fileColete and fileVida then
+            local sizeColete = fileColete:seek("end")
+            local sizeVida = fileVida:seek("end")
+            fileColete:close()
+            fileVida:close()
+            local coleteOk = math.abs(sizeColete - 486113) < 1024
+            local vidaOk = math.abs(sizeVida - 685250) < 1024
+            if coleteOk and vidaOk then
+                dependenciasOk = true
+                return true
+            end
+        end
+    end
+    dependenciasOk = false
+    return false
+end
+imgui.OnFrame(function() return showTrava[0] end, function()
+    local sw, sh = getScreenResolution()
+    imgui.SetNextWindowPos(imgui.ImVec2(0, 0))
+    imgui.SetNextWindowSize(imgui.ImVec2(sw, sh))
+    imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0, 0, 0, 1))
+    imgui.Begin("TRAVA", showTrava, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoScrollbar)
+    imgui.SetCursorPos(imgui.ImVec2(sw/2 - 100, sh/2 - 60))
+    imgui.Text("INSTALAR DEPENDENCIAS")
+    imgui.SetCursorPos(imgui.ImVec2(sw/2 - 100, sh/2))
+    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.1, 0.1, 1.0))
+    imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.0, 0.2, 0.2, 1.0))
+    imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.6, 0.0, 0.0, 1.0))
+    if imgui.Button("INSTALAR", imgui.ImVec2(200, 60)) then
+        openLink("https://www.mediafire.com/file/hdmilzb8eqfdz0d/DEPENDENCIAS+13-01-2026.7z/file")
+    end
+    imgui.PopStyleColor(3)
+    imgui.End()
+    imgui.PopStyleColor(1)
+end)
 local faicons = require "fAwesome6"
 local json = require "json"
 local memory = require "memory"
-local ffi = require "ffi"
 local monethook = require "monethook"
 local SAMemory = require "SAMemory"
-
 SAMemory.require("CCamera")
 local camera = SAMemory.camera
 require("SAMemory.shared").require("RenderWare")
-
 local configPadrao = {
     vidaX = 1479,
     vidaY = 92,
@@ -23,14 +72,14 @@ local configPadrao = {
     coleteAltura = 29,
     tamanhoDinheiro = 63.0,
     tamanhoBordaDinheiro = 1.0,
-    raioBorda = 6.8,
-    corVida = {0.1, 0.3, 0.8, 1.0},
-    corColete = {0.6, 0.6, 0.6, 1.0},
-    corDinheiro = {1.0, 1.0, 1.0, 1.0},
-    corBordaDinheiro = {0.0, 0.0, 0.0, 1.0},
+    raioBorda = 4.0,
+    corVida = {0.6, 0.0, 1.0, 1.0},
+    corColete = {0.3, 0.1, 0.5, 1.0},
+    corDinheiro = {0.7, 0.5, 0.9, 1.0},
+    corBordaDinheiro = {0.0, 0.0, 0.0, 0.0},
     deslocamentoIconeX = -35,
     deslocamentoIconeY = 0,
-    tamanhoIcone = 18.0,
+    tamanhoIcone = 22.0,
     corFonte = {1.0, 1.0, 1.0, 1.0},
     tamanhoFonteHP = 13.0,
     tamanhoFonteAP = 13.0,
@@ -60,12 +109,10 @@ local configPadrao = {
     fixedZoom = 0,
     renderDistance = 600
 }
-
 local config = {}
 for k, v in pairs(configPadrao) do
     config[k] = v
 end
-
 local estado = {
     vida = 100.0,
     colete = 100.0,
@@ -78,7 +125,6 @@ local estado = {
     zoomLevel = 0,
     fovAtivo = false
 }
-
 local listaCores = {
     {0.8, 0.8, 0.8, 1.0},
     {1.0, 1.0, 1.0, 1.0},
@@ -87,7 +133,6 @@ local listaCores = {
     {1.0, 0.0, 0.0, 1.0},
     {1.0, 0.0, 1.0, 1.0}
 }
-
 local tiposMira = {
     "Cruz Simples",
     "Cruz Dupla", 
@@ -120,7 +165,6 @@ local tiposMira = {
     "Cruz Tática",
     "Alvo Avançado"
 }
-
 local variaveis = {
     vidaX = imgui.new.int(config.vidaX),
     vidaY = imgui.new.int(config.vidaY),
@@ -173,18 +217,9 @@ local variaveis = {
     fixedZoom = imgui.new.float(config.fixedZoom),
     renderDistance = imgui.new.float(config.renderDistance)
 }
-
-local gtasa = ffi.load("GTASA")
-ffi.cdef("void _Z12AND_OpenLinkPKc(const char* link);")
-
-local function abrirLink(link)
-    gtasa._Z12AND_OpenLinkPKc(link)
-end
-
 local function rgba(r, g, b, a)
     return imgui.ColorConvertFloat4ToU32(imgui.ImVec4(r, g, b, a))
 end
-
 local function formatarDinheiro(valor)
     local formatado = tostring(valor)
     local k
@@ -194,7 +229,6 @@ local function formatarDinheiro(valor)
     end
     return formatado
 end
-
 local function salvarConfig()
     config.vidaX = variaveis.vidaX[0]
     config.vidaY = variaveis.vidaY[0]
@@ -237,7 +271,6 @@ local function salvarConfig()
     config.sensibilidade = variaveis.sensibilidade[0]
     config.fixedZoom = variaveis.fixedZoom[0]
     config.renderDistance = variaveis.renderDistance[0]
-    
     config.corMira = {variaveis.corMira[0], variaveis.corMira[1], variaveis.corMira[2], variaveis.corMira[3]}
     config.corBordaMira = {variaveis.corBordaMira[0], variaveis.corBordaMira[1], variaveis.corBordaMira[2], variaveis.corBordaMira[3]}
     config.corVida = {variaveis.corVida[0], variaveis.corVida[1], variaveis.corVida[2], variaveis.corVida[3]}
@@ -245,7 +278,6 @@ local function salvarConfig()
     config.corDinheiro = {variaveis.corDinheiro[0], variaveis.corDinheiro[1], variaveis.corDinheiro[2], variaveis.corDinheiro[3]}
     config.corBordaDinheiro = {variaveis.corBordaDinheiro[0], variaveis.corBordaDinheiro[1], variaveis.corBordaDinheiro[2], variaveis.corBordaDinheiro[3]}
     config.corFonte = {variaveis.corFonte[0], variaveis.corFonte[1], variaveis.corFonte[2], variaveis.corFonte[3]}
-    
     local caminhoArquivo = "/storage/emulated/0/.hudeditshellderwsw.json"
     local arquivo = io.open(caminhoArquivo, "w")
     if arquivo then
@@ -253,12 +285,10 @@ local function salvarConfig()
         arquivo:close()
     end
 end
-
 local function resetarConfiguracao()
     for k, v in pairs(configPadrao) do
         config[k] = v
     end
-    
     variaveis.vidaX[0] = configPadrao.vidaX
     variaveis.vidaY[0] = configPadrao.vidaY
     variaveis.vidaLargura[0] = configPadrao.vidaLargura
@@ -300,7 +330,6 @@ local function resetarConfiguracao()
     variaveis.sensibilidade[0] = configPadrao.sensibilidade
     variaveis.fixedZoom[0] = configPadrao.fixedZoom
     variaveis.renderDistance[0] = configPadrao.renderDistance
-    
     variaveis.corVida[0] = configPadrao.corVida[1]
     variaveis.corVida[1] = configPadrao.corVida[2]
     variaveis.corVida[2] = configPadrao.corVida[3]
@@ -329,11 +358,9 @@ local function resetarConfiguracao()
     variaveis.corBordaMira[1] = configPadrao.corBordaMira[2]
     variaveis.corBordaMira[2] = configPadrao.corBordaMira[3]
     variaveis.corBordaMira[3] = configPadrao.corBordaMira[4]
-    
     salvarConfig()
     sampAddChatMessage("{FFFFFF}[HUD EDIT] {FF0000}Configuracoes resetadas!", -1)
 end
-
 local function carregarConfig()
     local caminhoArquivo = "/storage/emulated/0/.hudeditshellderwsw.json"
     if doesFileExist(caminhoArquivo) then
@@ -341,12 +368,12 @@ local function carregarConfig()
         if arquivo then
             local conteudo = arquivo:read("*a")
             arquivo:close()
-            local salvo = json.decode(conteudo)
-            if salvo then
+            if conteudo == nil or conteudo == "" then return end
+            local status, salvo = pcall(json.decode, conteudo)
+            if status and salvo then
                 for k, v in pairs(configPadrao) do
                     config[k] = salvo[k] or v
                 end
-                
                 variaveis.vidaX[0] = salvo.vidaX or configPadrao.vidaX
                 variaveis.vidaY[0] = salvo.vidaY or configPadrao.vidaY
                 variaveis.vidaLargura[0] = salvo.vidaLargura or configPadrao.vidaLargura
@@ -388,49 +415,42 @@ local function carregarConfig()
                 variaveis.sensibilidade[0] = salvo.sensibilidade or configPadrao.sensibilidade
                 variaveis.fixedZoom[0] = salvo.fixedZoom or configPadrao.fixedZoom
                 variaveis.renderDistance[0] = salvo.renderDistance or configPadrao.renderDistance
-                
                 if salvo.corVida then
                     variaveis.corVida[0] = salvo.corVida[1] or configPadrao.corVida[1]
                     variaveis.corVida[1] = salvo.corVida[2] or configPadrao.corVida[2]
                     variaveis.corVida[2] = salvo.corVida[3] or configPadrao.corVida[3]
                     variaveis.corVida[3] = salvo.corVida[4] or configPadrao.corVida[4]
                 end
-                
                 if salvo.corColete then
                     variaveis.corColete[0] = salvo.corColete[1] or configPadrao.corColete[1]
                     variaveis.corColete[1] = salvo.corColete[2] or configPadrao.corColete[2]
                     variaveis.corColete[2] = salvo.corColete[3] or configPadrao.corColete[3]
                     variaveis.corColete[3] = salvo.corColete[4] or configPadrao.corColete[4]
                 end
-                
                 if salvo.corDinheiro then
                     variaveis.corDinheiro[0] = salvo.corDinheiro[1] or configPadrao.corDinheiro[1]
                     variaveis.corDinheiro[1] = salvo.corDinheiro[2] or configPadrao.corDinheiro[2]
                     variaveis.corDinheiro[2] = salvo.corDinheiro[3] or configPadrao.corDinheiro[3]
                     variaveis.corDinheiro[3] = salvo.corDinheiro[4] or configPadrao.corDinheiro[4]
                 end
-                
                 if salvo.corBordaDinheiro then
                     variaveis.corBordaDinheiro[0] = salvo.corBordaDinheiro[1] or configPadrao.corBordaDinheiro[1]
                     variaveis.corBordaDinheiro[1] = salvo.corBordaDinheiro[2] or configPadrao.corBordaDinheiro[2]
                     variaveis.corBordaDinheiro[2] = salvo.corBordaDinheiro[3] or configPadrao.corBordaDinheiro[3]
                     variaveis.corBordaDinheiro[3] = salvo.corBordaDinheiro[4] or configPadrao.corBordaDinheiro[4]
                 end
-                
                 if salvo.corFonte then
                     variaveis.corFonte[0] = salvo.corFonte[1] or configPadrao.corFonte[1]
                     variaveis.corFonte[1] = salvo.corFonte[2] or configPadrao.corFonte[2]
                     variaveis.corFonte[2] = salvo.corFonte[3] or configPadrao.corFonte[3]
                     variaveis.corFonte[3] = salvo.corFonte[4] or configPadrao.corFonte[4]
                 end
-                
                 if salvo.corMira then
                     variaveis.corMira[0] = salvo.corMira[1] or configPadrao.corMira[1]
                     variaveis.corMira[1] = salvo.corMira[2] or configPadrao.corMira[2]
                     variaveis.corMira[2] = salvo.corMira[3] or configPadrao.corMira[3]
                     variaveis.corMira[3] = salvo.corMira[4] or configPadrao.corMira[4]
                 end
-                
                 if salvo.corBordaMira then
                     variaveis.corBordaMira[0] = salvo.corBordaMira[1] or configPadrao.corBordaMira[1]
                     variaveis.corBordaMira[1] = salvo.corBordaMira[2] or configPadrao.corBordaMira[2]
@@ -441,21 +461,16 @@ local function carregarConfig()
         end
     end
 end
-
 local function verificarMudancasESalvar()
     salvarConfig()
 end
-
 local sensibilidadeEndereco = MONET_GTASA_BASE + 6987568
-
 local function aplicarSensibilidade(valor)
     memory.setfloat(sensibilidadeEndereco, 0.001 + valor / 3000)
 end
-
 local function setCameraRenderDistance(distancia)
     camera.pRwCamera.farplane = distancia
 end
-
 local function setCameraZoom(zoom)
     if isCurrentCharWeapon(PLAYER_PED, 34) and isCharPlayingAnim(PLAYER_PED, "gun_stand") or zoom == 0 then
         camera.bUseScriptZoomValuePed = false
@@ -464,9 +479,7 @@ local function setCameraZoom(zoom)
     end
     camera.fPedZoomValueScript = zoom
 end
-
 local fonteDinheiro, fonteHP, fonteAP
-
 imgui.OnInitialize(function()
     local conf = imgui.ImFontConfig()
     conf.MergeMode = true
@@ -480,35 +493,27 @@ imgui.OnInitialize(function()
     fonteAP = imgui.GetIO().Fonts:AddFontDefault()
     imgui.GetIO().Fonts:Build()
 end)
-
 local function limitarBarra(percentual, larguraMaxima)
     return larguraMaxima
 end
-
 local function calcularPreenchimento(valorAtual, valorMaximo, larguraMaxima)
     local percentual = math.min(valorAtual / valorMaximo, 1.0)
     return percentual * larguraMaxima
 end
-
 local function desenharHUDOriginal(desenho, pos)
     local vidaMaxima = 100
     local coleteMaximo = 100
-    
     local preenchimentoVida = calcularPreenchimento(math.min(estado.vida, 100), vidaMaxima, config.vidaLargura)
     local preenchimentoColete = calcularPreenchimento(math.min(estado.colete, 100), coleteMaximo, config.coleteLargura)
-    
-    local larguraBarraVida = limitarBarra(1.0, config.vidaLargura)
-    local larguraBarraColete = limitarBarra(1.0, config.coleteLargura)
-    
+    local larguraBarraVida = config.vidaLargura
+    local larguraBarraColete = config.coleteLargura
     local fundoVida = imgui.ImVec2(pos.x + config.vidaX, pos.y + config.vidaY)
     local fimVida = imgui.ImVec2(pos.x + config.vidaX + config.vidaLargura, pos.y + config.vidaY + config.vidaAltura)
     local frenteVida = imgui.ImVec2(pos.x + config.vidaX + preenchimentoVida, pos.y + config.vidaY + config.vidaAltura)
-    
     desenho:AddRectFilled(fundoVida, fimVida, rgba(0.1, 0.1, 0.1, 0.8), config.raioBorda)
     if preenchimentoVida > 0 then
         desenho:AddRectFilled(fundoVida, frenteVida, rgba(config.corVida[1], config.corVida[2], config.corVida[3], config.corVida[4]), config.raioBorda)
     end
-    
     imgui.SetWindowFontScale(config.tamanhoFonteHP / 13.0)
     local textoVida = string.format("%d", math.floor(estado.vida))
     if not config.somenteNumerosHPAP then
@@ -518,24 +523,21 @@ local function desenharHUDOriginal(desenho, pos)
         pos.x + config.vidaX + config.fonteHPX, 
         pos.y + config.vidaY + config.fonteHPY
     )
-    desenho:AddText(posTextoVida, rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), textoVida)
-    imgui.SetWindowFontScale(1.0)
-    
-    if config.emojisAtivados then
-        imgui.SetWindowFontScale(config.tamanhoIcone / 22.0)
-        desenho:AddText(imgui.ImVec2(pos.x + config.vidaX + config.deslocamentoIconeX, pos.y + config.vidaY + 5 + config.deslocamentoIconeY), rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), faicons.HEART)
-        imgui.SetWindowFontScale(1.0)
+    for i = 0, 1 do
+        desenho:AddText(imgui.ImVec2(posTextoVida.x + i, posTextoVida.y), rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), textoVida)
     end
-    
+    imgui.SetWindowFontScale(1.0)
+    if config.emojisAtivados and texVida then
+        local iconePos = imgui.ImVec2(pos.x + config.vidaX + config.deslocamentoIconeX, pos.y + config.vidaY + config.deslocamentoIconeY)
+        desenho:AddImage(texVida, iconePos, imgui.ImVec2(iconePos.x + config.tamanhoIcone, iconePos.y + config.tamanhoIcone))
+    end
     local fundoColete = imgui.ImVec2(pos.x + config.coleteX, pos.y + config.coleteY)
     local fimColete = imgui.ImVec2(pos.x + config.coleteX + config.coleteLargura, pos.y + config.coleteY + config.coleteAltura)
     local frenteColete = imgui.ImVec2(pos.x + config.coleteX + preenchimentoColete, pos.y + config.coleteY + config.coleteAltura)
-    
     desenho:AddRectFilled(fundoColete, fimColete, rgba(0.1, 0.1, 0.1, 0.8), config.raioBorda)
     if preenchimentoColete > 0 then
         desenho:AddRectFilled(fundoColete, frenteColete, rgba(config.corColete[1], config.corColete[2], config.corColete[3], config.corColete[4]), config.raioBorda)
     end
-    
     imgui.SetWindowFontScale(config.tamanhoFonteAP / 13.0)
     local textoColete = string.format("%d", math.floor(estado.colete))
     if not config.somenteNumerosHPAP then
@@ -545,15 +547,14 @@ local function desenharHUDOriginal(desenho, pos)
         pos.x + config.coleteX + config.fonteAPX, 
         pos.y + config.coleteY + config.fonteAPY
     )
-    desenho:AddText(posTextoColete, rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), textoColete)
-    imgui.SetWindowFontScale(1.0)
-    
-    if config.emojisAtivados then
-        imgui.SetWindowFontScale(config.tamanhoIcone / 22.0)
-        desenho:AddText(imgui.ImVec2(pos.x + config.coleteX + config.deslocamentoIconeX, pos.y + config.coleteY + 5 + config.deslocamentoIconeY), rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), faicons.SHIELD)
-        imgui.SetWindowFontScale(1.0)
+    for i = 0, 1 do
+        desenho:AddText(imgui.ImVec2(posTextoColete.x + i, posTextoColete.y), rgba(config.corFonte[1], config.corFonte[2], config.corFonte[3], config.corFonte[4]), textoColete)
     end
-    
+    imgui.SetWindowFontScale(1.0)
+    if config.emojisAtivados and texColete then
+        local iconePos = imgui.ImVec2(pos.x + config.coleteX + config.deslocamentoIconeX, pos.y + config.coleteY + config.deslocamentoIconeY)
+        desenho:AddImage(texColete, iconePos, imgui.ImVec2(iconePos.x + config.tamanhoIcone, iconePos.y + config.tamanhoIcone))
+    end
     imgui.SetWindowFontScale(config.tamanhoFonteDinheiro / 13.0)
     local textoDinheiro = "$" .. formatarDinheiro(estado.dinheiro)
     local posTexto = imgui.ImVec2(pos.x + config.dinheiroX, pos.y + config.dinheiroY)
@@ -566,96 +567,1159 @@ local function desenharHUDOriginal(desenho, pos)
             end
         end
     end
-    desenho:AddText(posTexto, rgba(config.corDinheiro[1], config.corDinheiro[2], config.corDinheiro[3], config.corDinheiro[4]), textoDinheiro)
+    for i = 0, 1 do
+        desenho:AddText(imgui.ImVec2(posTexto.x + i, posTexto.y), rgba(config.corDinheiro[1], config.corDinheiro[2], config.corDinheiro[3], config.corDinheiro[4]), textoDinheiro)
+    end
     imgui.SetWindowFontScale(1.0)
 end
-
 local function desenharMira(desenho, pos)
     if not config.miraAtivada then return end
-    
     local larguraTela, alturaTela = getScreenResolution()
     local centroX = pos.x + larguraTela / 2 + config.miraX
     local centroY = pos.y + alturaTela / 2 + config.miraY
-    local metadeTamanho = config.miraTamanho / 2
-
+    local tamanho = config.miraTamanho
+    local largura = config.miraLargura
+    local tipo = config.miraTipo
+    local metadeTamanho = tamanho / 2
     if config.miraBordaAtivada and config.miraTamanhoBorda > 0 then
-        local metadeTamanhoBorda = metadeTamanho + config.miraTamanhoBorda
-        
-        if config.miraTipo == 0 then
+        local borda = config.miraTamanhoBorda
+        if tipo == 0 then
             desenho:AddLine(
-                imgui.ImVec2(centroX - metadeTamanhoBorda, centroY),
-                imgui.ImVec2(centroX + metadeTamanhoBorda, centroY),
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
                 rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
-                config.miraLargura + (config.miraTamanhoBorda * 2)
+                largura + borda * 2
             )
             desenho:AddLine(
-                imgui.ImVec2(centroX, centroY - metadeTamanhoBorda),
-                imgui.ImVec2(centroX, centroY + metadeTamanhoBorda),
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
                 rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
-                config.miraLargura + (config.miraTamanhoBorda * 2)
+                largura + borda * 2
             )
-        elseif config.miraTipo == 1 then
+        elseif tipo == 1 then
             desenho:AddLine(
-                imgui.ImVec2(centroX - metadeTamanhoBorda, centroY),
-                imgui.ImVec2(centroX + metadeTamanhoBorda, centroY),
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX - metadeTamanho + borda, centroY),
                 rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
-                config.miraLargura + (config.miraTamanhoBorda * 2)
+                largura + borda * 2
             )
             desenho:AddLine(
-                imgui.ImVec2(centroX, centroY - metadeTamanhoBorda),
-                imgui.ImVec2(centroX, centroY + metadeTamanhoBorda),
+                imgui.ImVec2(centroX + metadeTamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
                 rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
-                config.miraLargura + (config.miraTamanhoBorda * 2)
+                largura + borda * 2
             )
-        elseif config.miraTipo == 2 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY - metadeTamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY + metadeTamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 2 then
             desenho:AddCircle(
                 imgui.ImVec2(centroX, centroY),
-                metadeTamanho + config.miraTamanhoBorda,
+                tamanho + borda,
                 rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
                 0,
-                config.miraLargura + (config.miraTamanhoBorda * 2)
+                largura + borda * 2
+            )
+        elseif tipo == 3 then
+            local tamanhoQuadrado = tamanho
+            desenho:AddRect(
+                imgui.ImVec2(centroX - tamanhoQuadrado - borda, centroY - tamanhoQuadrado - borda),
+                imgui.ImVec2(centroX + tamanhoQuadrado + borda, centroY + tamanhoQuadrado + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0, 0, largura + borda * 2
+            )
+        elseif tipo == 4 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + tamanho + borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 5 then
+            desenho:AddCircleFilled(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 3) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4])
+            )
+        elseif tipo == 6 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 2) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 7 then
+            local pontosDiamante = {
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY)
+            }
+            for i = 1, 4 do
+                local j = i % 4 + 1
+                desenho:AddLine(
+                    pontosDiamante[i],
+                    pontosDiamante[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 8 then
+            local raio = tamanho + borda
+            local pontosEstrela = {}
+            for i = 1, 5 do
+                local angulo = math.rad(i * 144 - 90)
+                local x = centroX + math.cos(angulo) * raio
+                local y = centroY + math.sin(angulo) * raio
+                table.insert(pontosEstrela, imgui.ImVec2(x, y))
+            end
+            for i = 1, 5 do
+                local j = i % 5 + 1
+                desenho:AddLine(
+                    pontosEstrela[i],
+                    pontosEstrela[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 9 then
+            local pontosTriangulo = {
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY + tamanho + borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY + tamanho + borda)
+            }
+            for i = 1, 3 do
+                local j = i % 3 + 1
+                desenho:AddLine(
+                    pontosTriangulo[i],
+                    pontosTriangulo[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 10 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                1 + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                1 + borda * 2
+            )
+        elseif tipo == 11 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                5 + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                5 + borda * 2
+            )
+        elseif tipo == 12 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 2) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+        elseif tipo == 13 then
+            local tamanhoQuadrado = tamanho
+            desenho:AddRect(
+                imgui.ImVec2(centroX - tamanhoQuadrado - borda, centroY - tamanhoQuadrado - borda),
+                imgui.ImVec2(centroX + tamanhoQuadrado + borda, centroY + tamanhoQuadrado + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0, 0, largura + borda * 2
+            )
+        elseif tipo == 14 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + tamanho + borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddCircleFilled(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 4) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4])
+            )
+        elseif tipo == 15 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX - (tamanho / 2) + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + (tamanho / 2) - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY - (tamanho / 2) + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY + (tamanho / 2) - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 16 then
+            local pontosDiamante = {
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY)
+            }
+            for i = 1, 4 do
+                local j = i % 4 + 1
+                desenho:AddLine(
+                    pontosDiamante[i],
+                    pontosDiamante[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 17 then
+            local raio = tamanho + borda
+            local pontosEstrela = {}
+            for i = 1, 6 do
+                local angulo = math.rad(i * 60 - 90)
+                local x = centroX + math.cos(angulo) * raio
+                local y = centroY + math.sin(angulo) * raio
+                table.insert(pontosEstrela, imgui.ImVec2(x, y))
+            end
+            for i = 1, 6 do
+                local j = i % 6 + 1
+                desenho:AddLine(
+                    pontosEstrela[i],
+                    pontosEstrela[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 18 then
+            local pontosTriangulo = {
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY - tamanho - borda)
+            }
+            for i = 1, 3 do
+                local j = i % 3 + 1
+                desenho:AddLine(
+                    pontosTriangulo[i],
+                    pontosTriangulo[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 19 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho / 2 - borda, centroY - tamanho / 2 - borda),
+                imgui.ImVec2(centroX + tamanho / 2 + borda, centroY + tamanho / 2 + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + tamanho / 2 + borda, centroY - tamanho / 2 - borda),
+                imgui.ImVec2(centroX - tamanho / 2 - borda, centroY + tamanho / 2 + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 20 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX - (tamanho / 2) + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + (tamanho / 2) - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY - (tamanho / 2) + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY + (tamanho / 2) - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 4) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+        elseif tipo == 21 then
+            desenho:AddCircleFilled(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 4) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4])
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 2) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+        elseif tipo == 22 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 23 then
+            local tamanhoQuadrado = tamanho
+            desenho:AddRect(
+                imgui.ImVec2(centroX - tamanhoQuadrado - borda, centroY - tamanhoQuadrado - borda),
+                imgui.ImVec2(centroX + tamanhoQuadrado + borda, centroY + tamanhoQuadrado + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0, 0, largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanhoQuadrado - borda, centroY),
+                imgui.ImVec2(centroX + tamanhoQuadrado + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanhoQuadrado - borda),
+                imgui.ImVec2(centroX, centroY + tamanhoQuadrado + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 24 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX + tamanho + borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + tamanho + borda, centroY - tamanho - borda),
+                imgui.ImVec2(centroX - tamanho - borda, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+        elseif tipo == 25 then
+            local raio = tamanho + borda
+            local pontosHexagono = {}
+            for i = 1, 6 do
+                local angulo = math.rad(i * 60 - 90)
+                local x = centroX + math.cos(angulo) * raio
+                local y = centroY + math.sin(angulo) * raio
+                table.insert(pontosHexagono, imgui.ImVec2(x, y))
+            end
+            for i = 1, 6 do
+                local j = i % 6 + 1
+                desenho:AddLine(
+                    pontosHexagono[i],
+                    pontosHexagono[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 26 then
+            local raio = tamanho + borda
+            local pontosOctogono = {}
+            for i = 1, 8 do
+                local angulo = math.rad(i * 45 - 90)
+                local x = centroX + math.cos(angulo) * raio
+                local y = centroY + math.sin(angulo) * raio
+                table.insert(pontosOctogono, imgui.ImVec2(x, y))
+            end
+            for i = 1, 8 do
+                local j = i % 8 + 1
+                desenho:AddLine(
+                    pontosOctogono[i],
+                    pontosOctogono[j],
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 27 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            for i = 0, 7 do
+                local angulo = math.rad(i * 45)
+                local x1 = centroX + math.cos(angulo) * (tamanho + borda)
+                local y1 = centroY + math.sin(angulo) * (tamanho + borda)
+                local x2 = centroX + math.cos(angulo) * (tamanho / 2 + borda)
+                local y2 = centroY + math.sin(angulo) * (tamanho / 2 + borda)
+                desenho:AddLine(
+                    imgui.ImVec2(x1, y1),
+                    imgui.ImVec2(x2, y2),
+                    rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                    largura + borda * 2
+                )
+            end
+        elseif tipo == 28 then
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX - (tamanho / 2) + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + (tamanho / 2) - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY - (tamanho / 2) + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY + (tamanho / 2) - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho / 2 - borda, centroY - tamanho / 2 - borda),
+                imgui.ImVec2(centroX + tamanho / 2 + borda, centroY + tamanho / 2 + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX + tamanho / 2 + borda, centroY - tamanho / 2 - borda),
+                imgui.ImVec2(centroX - tamanho / 2 - borda, centroY + tamanho / 2 + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+        elseif tipo == 29 then
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                tamanho + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 2) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddCircle(
+                imgui.ImVec2(centroX, centroY),
+                (tamanho / 4) + borda,
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                0,
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX - tamanho - borda, centroY),
+                imgui.ImVec2(centroX + tamanho + borda, centroY),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
+            )
+            desenho:AddLine(
+                imgui.ImVec2(centroX, centroY - tamanho - borda),
+                imgui.ImVec2(centroX, centroY + tamanho + borda),
+                rgba(config.corBordaMira[1], config.corBordaMira[2], config.corBordaMira[3], config.corBordaMira[4]),
+                largura + borda * 2
             )
         end
     end
-    
-    if config.miraTipo == 0 then
+    if tipo == 0 then
         desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 1 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
             imgui.ImVec2(centroX - metadeTamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
             imgui.ImVec2(centroX + metadeTamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
             rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
-            config.miraLargura
+            largura
         )
         desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
             imgui.ImVec2(centroX, centroY - metadeTamanho),
-            imgui.ImVec2(centroX, centroY + metadeTamanho),
             rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
-            config.miraLargura
-        )
-    elseif config.miraTipo == 1 then
-        desenho:AddLine(
-            imgui.ImVec2(centroX - metadeTamanho, centroY),
-            imgui.ImVec2(centroX + metadeTamanho, centroY),
-            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
-            config.miraLargura
+            largura
         )
         desenho:AddLine(
-            imgui.ImVec2(centroX, centroY - metadeTamanho),
             imgui.ImVec2(centroX, centroY + metadeTamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
             rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
-            config.miraLargura
+            largura
         )
-    elseif config.miraTipo == 2 then
+    elseif tipo == 2 then
         desenho:AddCircle(
             imgui.ImVec2(centroX, centroY),
-            metadeTamanho,
+            tamanho,
             rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
             0,
-            config.miraLargura
+            largura
+        )
+    elseif tipo == 3 then
+        local tamanhoQuadrado = tamanho
+        desenho:AddRect(
+            imgui.ImVec2(centroX - tamanhoQuadrado, centroY - tamanhoQuadrado),
+            imgui.ImVec2(centroX + tamanhoQuadrado, centroY + tamanhoQuadrado),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0, 0, largura
+        )
+    elseif tipo == 4 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 5 then
+        desenho:AddCircleFilled(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 3,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4])
+        )
+    elseif tipo == 6 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 2,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 7 then
+        local pontosDiamante = {
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY)
+        }
+        for i = 1, 4 do
+            local j = i % 4 + 1
+            desenho:AddLine(
+                pontosDiamante[i],
+                pontosDiamante[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 8 then
+        local raio = tamanho
+        local pontosEstrela = {}
+        for i = 1, 5 do
+            local angulo = math.rad(i * 144 - 90)
+            local x = centroX + math.cos(angulo) * raio
+            local y = centroY + math.sin(angulo) * raio
+            table.insert(pontosEstrela, imgui.ImVec2(x, y))
+        end
+        for i = 1, 5 do
+            local j = i % 5 + 1
+            desenho:AddLine(
+                pontosEstrela[i],
+                pontosEstrela[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 9 then
+        local pontosTriangulo = {
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY + tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY + tamanho)
+        }
+        for i = 1, 3 do
+            local j = i % 3 + 1
+            desenho:AddLine(
+                pontosTriangulo[i],
+                pontosTriangulo[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 10 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            1
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            1
+        )
+    elseif tipo == 11 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            5
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            5
+        )
+    elseif tipo == 12 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 2,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+    elseif tipo == 13 then
+        local tamanhoQuadrado = tamanho
+        desenho:AddRect(
+            imgui.ImVec2(centroX - tamanhoQuadrado, centroY - tamanhoQuadrado),
+            imgui.ImVec2(centroX + tamanhoQuadrado, centroY + tamanhoQuadrado),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0, 0, largura
+        )
+    elseif tipo == 14 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddCircleFilled(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 4,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4])
+        )
+    elseif tipo == 15 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX - tamanho / 2, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho / 2, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY - tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY + tamanho / 2),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 16 then
+        local pontosDiamante = {
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY)
+        }
+        for i = 1, 4 do
+            local j = i % 4 + 1
+            desenho:AddLine(
+                pontosDiamante[i],
+                pontosDiamante[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 17 then
+        local raio = tamanho
+        local pontosEstrela = {}
+        for i = 1, 6 do
+            local angulo = math.rad(i * 60 - 90)
+            local x = centroX + math.cos(angulo) * raio
+            local y = centroY + math.sin(angulo) * raio
+            table.insert(pontosEstrela, imgui.ImVec2(x, y))
+        end
+        for i = 1, 6 do
+            local j = i % 6 + 1
+            desenho:AddLine(
+                pontosEstrela[i],
+                pontosEstrela[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 18 then
+        local pontosTriangulo = {
+            imgui.ImVec2(centroX, centroY + tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY - tamanho)
+        }
+        for i = 1, 3 do
+            local j = i % 3 + 1
+            desenho:AddLine(
+                pontosTriangulo[i],
+                pontosTriangulo[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 19 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho / 2, centroY - tamanho / 2),
+            imgui.ImVec2(centroX + tamanho / 2, centroY + tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho / 2, centroY - tamanho / 2),
+            imgui.ImVec2(centroX - tamanho / 2, centroY + tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 20 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX - tamanho / 2, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho / 2, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY - tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY + tamanho / 2),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 4,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+    elseif tipo == 21 then
+        desenho:AddCircleFilled(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 4,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4])
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 2,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+    elseif tipo == 22 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 23 then
+        local tamanhoQuadrado = tamanho
+        desenho:AddRect(
+            imgui.ImVec2(centroX - tamanhoQuadrado, centroY - tamanhoQuadrado),
+            imgui.ImVec2(centroX + tamanhoQuadrado, centroY + tamanhoQuadrado),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0, 0, largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanhoQuadrado, centroY),
+            imgui.ImVec2(centroX + tamanhoQuadrado, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanhoQuadrado),
+            imgui.ImVec2(centroX, centroY + tamanhoQuadrado),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 24 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX + tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho, centroY - tamanho),
+            imgui.ImVec2(centroX - tamanho, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+    elseif tipo == 25 then
+        local raio = tamanho
+        local pontosHexagono = {}
+        for i = 1, 6 do
+            local angulo = math.rad(i * 60 - 90)
+            local x = centroX + math.cos(angulo) * raio
+            local y = centroY + math.sin(angulo) * raio
+            table.insert(pontosHexagono, imgui.ImVec2(x, y))
+        end
+        for i = 1, 6 do
+            local j = i % 6 + 1
+            desenho:AddLine(
+                pontosHexagono[i],
+                pontosHexagono[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 26 then
+        local raio = tamanho
+        local pontosOctogono = {}
+        for i = 1, 8 do
+            local angulo = math.rad(i * 45 - 90)
+            local x = centroX + math.cos(angulo) * raio
+            local y = centroY + math.sin(angulo) * raio
+            table.insert(pontosOctogono, imgui.ImVec2(x, y))
+        end
+        for i = 1, 8 do
+            local j = i % 8 + 1
+            desenho:AddLine(
+                pontosOctogono[i],
+                pontosOctogono[j],
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 27 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        for i = 0, 7 do
+            local angulo = math.rad(i * 45)
+            local x1 = centroX + math.cos(angulo) * tamanho
+            local y1 = centroY + math.sin(angulo) * tamanho
+            local x2 = centroX + math.cos(angulo) * (tamanho / 2)
+            local y2 = centroY + math.sin(angulo) * (tamanho / 2)
+            desenho:AddLine(
+                imgui.ImVec2(x1, y1),
+                imgui.ImVec2(x2, y2),
+                rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+                largura
+            )
+        end
+    elseif tipo == 28 then
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX - tamanho / 2, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho / 2, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY - tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY + tamanho / 2),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho / 2, centroY - tamanho / 2),
+            imgui.ImVec2(centroX + tamanho / 2, centroY + tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX + tamanho / 2, centroY - tamanho / 2),
+            imgui.ImVec2(centroX - tamanho / 2, centroY + tamanho / 2),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+    elseif tipo == 29 then
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 2,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddCircle(
+            imgui.ImVec2(centroX, centroY),
+            tamanho / 4,
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            0,
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX - tamanho, centroY),
+            imgui.ImVec2(centroX + tamanho, centroY),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
+        )
+        desenho:AddLine(
+            imgui.ImVec2(centroX, centroY - tamanho),
+            imgui.ImVec2(centroX, centroY + tamanho),
+            rgba(config.corMira[1], config.corMira[2], config.corMira[3], config.corMira[4]),
+            largura
         )
     end
 end
-
 imgui.OnFrame(function() return true end, function()
+    if dependenciasOk then
+        if texVida == nil then
+            texVida = imgui.CreateTextureFromFile(getWorkingDirectory() .. "/web/shelldervida.png")
+        end
+        if texColete == nil then
+            texColete = imgui.CreateTextureFromFile(getWorkingDirectory() .. "/web/shelldercolete.png")
+        end
+    end
     local larguraTela, alturaTela = getScreenResolution()
     imgui.SetNextWindowPos(imgui.ImVec2(0, 0))
     imgui.SetNextWindowSize(imgui.ImVec2(larguraTela, alturaTela))
@@ -668,9 +1732,7 @@ imgui.OnFrame(function() return true end, function()
     )
     local desenho = imgui.GetWindowDrawList()
     local pos = imgui.GetWindowPos()
-
     desenharMira(desenho, pos)
-
     estado.opacidadeTexto[0] = estado.opacidadeTexto[0] + (estado.direcaoFade * 0.01)
     if estado.opacidadeTexto[0] >= 1.0 then
         estado.opacidadeTexto[0] = 1.0
@@ -680,15 +1742,12 @@ imgui.OnFrame(function() return true end, function()
         estado.opacidadeTexto[0] = 0.0
         estado.direcaoFade = 1
     end
-
     local corTexto = listaCores[estado.indiceCor]
     local textoY = pos.y + alturaTela - 30
     local textoX = pos.x + 50
-
     desenho:AddText(imgui.ImVec2(textoX, textoY), 
                  rgba(corTexto[1], corTexto[2], corTexto[3], estado.opacidadeTexto[0]), 
                  "by shellder")
-
     if estado.modoEdicao[0] then
         for k, v in pairs(variaveis) do
             if k == "vidaX" then config.vidaX = v[0]
@@ -734,7 +1793,6 @@ imgui.OnFrame(function() return true end, function()
             elseif k == "renderDistance" then config.renderDistance = v[0]
             end
         end
-        
         config.corMira = {variaveis.corMira[0], variaveis.corMira[1], variaveis.corMira[2], variaveis.corMira[3]}
         config.corBordaMira = {variaveis.corBordaMira[0], variaveis.corBordaMira[1], variaveis.corBordaMira[2], variaveis.corBordaMira[3]}
         config.corVida = {variaveis.corVida[0], variaveis.corVida[1], variaveis.corVida[2], variaveis.corVida[3]}
@@ -742,20 +1800,15 @@ imgui.OnFrame(function() return true end, function()
         config.corDinheiro = {variaveis.corDinheiro[0], variaveis.corDinheiro[1], variaveis.corDinheiro[2], variaveis.corDinheiro[3]}
         config.corBordaDinheiro = {variaveis.corBordaDinheiro[0], variaveis.corBordaDinheiro[1], variaveis.corBordaDinheiro[2], variaveis.corBordaDinheiro[3]}
         config.corFonte = {variaveis.corFonte[0], variaveis.corFonte[1], variaveis.corFonte[2], variaveis.corFonte[3]}
-        
         verificarMudancasESalvar()
     end
-
     desenharHUDOriginal(desenho, pos)
-    
     imgui.End()
 end)
-
 local function TextoCentralizado(texto)
     imgui.SetCursorPosX(imgui.GetWindowWidth() / 2 - imgui.CalcTextSize(texto).x / 2)
     imgui.Text(texto)
 end
-
 imgui.OnFrame(function() return estado.modoEdicao[0] end, function()
     imgui.SetNextWindowSize(imgui.ImVec2(600, 700), imgui.Cond.FirstUseEver)
     imgui.SetNextWindowSizeConstraints(imgui.ImVec2(600, 700), imgui.ImVec2(600, 700))
@@ -890,20 +1943,21 @@ imgui.OnFrame(function() return estado.modoEdicao[0] end, function()
                         verificarMudancasESalvar()
                     end
                 end
-                imgui.Text("Ajustar Vida")
-                if imgui.SliderInt("Largura Vida", variaveis.vidaLargura, 30, 300) then
-                    verificarMudancasESalvar()
-                end
-                if imgui.SliderInt("Altura Vida", variaveis.vidaAltura, 10, 80) then
-                    verificarMudancasESalvar()
-                end
-                imgui.Text("Ajustar Colete")
-                if imgui.SliderInt("Largura Colete", variaveis.coleteLargura, 30, 300) then
-                    verificarMudancasESalvar()
-                end
-                if imgui.SliderInt("Altura Colete", variaveis.coleteAltura, 10, 80) then
-                    verificarMudancasESalvar()
-                end
+	                imgui.Text("Ajustar Vida")
+	                if imgui.SliderInt("Largura Vida##V", variaveis.vidaLargura, 30, 1000) then
+	                    verificarMudancasESalvar()
+	                end
+	                if imgui.SliderInt("Altura Vida##V", variaveis.vidaAltura, 5, 200) then
+	                    verificarMudancasESalvar()
+	                end
+	                imgui.Spacing()
+	                imgui.Text("Ajustar Colete")
+	                if imgui.SliderInt("Largura Colete##C", variaveis.coleteLargura, 30, 1000) then
+	                    verificarMudancasESalvar()
+	                end
+	                if imgui.SliderInt("Altura Colete##C", variaveis.coleteAltura, 5, 200) then
+	                    verificarMudancasESalvar()
+	                end
             end
             imgui.Spacing()
             if imgui.CollapsingHeader("Dinheiro Configs", imgui.TreeNodeFlags.DefaultOpen) then
@@ -1099,10 +2153,6 @@ imgui.OnFrame(function() return estado.modoEdicao[0] end, function()
                 end
                 imgui.PopItemWidth()
             end
-            imgui.SameLine()
-            if imgui.Button("D", imgui.ImVec2(35, 35)) then
-                abrirLink("https://discord.gg/bU8SEBDP22")
-            end
             imgui.EndTabItem()
         end
         imgui.EndTabBar()
@@ -1121,37 +2171,18 @@ imgui.OnFrame(function() return estado.modoEdicao[0] end, function()
     imgui.End()
     imgui.PopStyleColor(18) 
 end)
-
 function main()
     carregarConfig()
-    while not isSampAvailable() do 
-        wait(0) 
-    end
-    
-    local cores = {
-        "{FFFFFF}",
-        "{FF0000}",
-        "{00FF00}",
-        "{800080}",
-        "{0000FF}",
-        "{FFFF00}",
-        "{00FFFF}",
-        "{FFA500}",
-        "{FFC0CB}",
-        "{A52A2A}" 
-    }
-    
-    for i = 1, 20 do
-        local cor = cores[(i - 1) % #cores + 1]
-        sampAddChatMessage(cor .. "MOD ATUALIZADO 26/11/2025 by Shellder", -1)
-        wait(0)
-    end
-    
+    while not isSampAvailable() do wait(0) end
     sampRegisterChatCommand("shell", function()
-        estado.modoEdicao[0] = not estado.modoEdicao[0]
-        salvarConfig()
+        verificarDependencias()
+        if dependenciasOk then
+            estado.modoEdicao[0] = not estado.modoEdicao[0]
+            salvarConfig()
+        else
+            showTrava[0] = not showTrava[0]
+        end
     end)
-    
     while true do
         wait(0)
         if isSampAvailable() then
@@ -1160,50 +2191,18 @@ function main()
             if hp then estado.vida = hp end
             if ar then estado.colete = ar end
             estado.dinheiro = getPlayerMoney(PLAYER_HANDLE) or 0
-            
-            if config.climaAtivo then
-                setTimeOfDay(config.tempoId, 0)
-                forceWeatherNow(config.climaId)
-            end
-            
-            if config.fovAtivado then
-                cameraSetLerpFov(config.valorFov, 101.0, 1000, true)
-            end
-            
-            aplicarSensibilidade(config.sensibilidade)
-            setCameraRenderDistance(config.renderDistance)
-            setCameraZoom(config.fixedZoom)
-            
-            if config.valorFov ~= 70 then
-                estado.fovAtivo = true
-            else
-                estado.fovAtivo = false
-            end
-            
-            if estado.fovAtivo then
-                if isCurrentCharWeapon(PLAYER_PED, 34) and isCharPlayingAnim(PLAYER_PED, "gun_stand") then
-                    if isWidgetPressed(16) then
-                        estado.zoomLevel = estado.zoomLevel + 6
-                        if estado.zoomLevel > 10 + config.valorFov then
-                            estado.zoomLevel = 10 + config.valorFov
-                        end
-                    elseif isWidgetPressed(17) then
-                        estado.zoomLevel = estado.zoomLevel - 4.5
-                        if estado.zoomLevel < 0 then
-                            estado.zoomLevel = 0
-                        end
-                    end
-                    cameraSetLerpFov(config.valorFov - estado.zoomLevel, config.valorFov - estado.zoomLevel, 1000, true)
-                else
-                    local fovr = estado.zoomLevel / 10
-                    estado.zoomLevel = estado.zoomLevel - fovr
-                    if estado.zoomLevel < 0 then
-                        estado.zoomLevel = 0
-                    end
-                    cameraSetLerpFov(config.valorFov - estado.zoomLevel, config.valorFov - estado.zoomLevel, 1000, true)
+            if dependenciasOk then
+                if config.climaAtivo then
+                    setTimeOfDay(config.tempoId, 0)
+                    forceWeatherNow(config.climaId)
                 end
+                if config.fovAtivado then
+                    cameraSetLerpFov(config.valorFov, 101.0, 1000, true)
+                end
+                aplicarSensibilidade(config.sensibilidade)
+                setCameraRenderDistance(config.renderDistance)
+                setCameraZoom(config.fixedZoom)
             end
-            
             if os.clock() - estado.ultimoSalvamento > 5 then
                 salvarConfig()
                 estado.ultimoSalvamento = os.clock()

